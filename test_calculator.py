@@ -1,18 +1,23 @@
-import pytest
-from calculator import *
-
 def test_add():
-    assert add(2, 3) == 5
+    """Test add function."""
+    assert add(2,3) == 5
 
 def test_subtract():
-    assert subtract(10, 4) == 6
+    """Test subtract function."""
+    assert subtract(5,2) == 3
 
 def test_multiply():
-    assert multiply(3, 4) == 12
+    """Test multiply function."""
+    assert multiply(2,3) == 6
 
 def test_divide():
-    assert divide(12, 3) == 4
+    """Test divide function."""
+    assert divide(6,2) == 3
 
 def test_divide_by_zero():
-    with pytest.raises(ValueError):
-        divide(10, 0)
+    """Test division by zero."""
+    try:
+        divide(5,0)
+        assert False
+    except ValueError:
+        assert True

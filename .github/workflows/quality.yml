@@ -1,0 +1,54 @@
+name: Code Quality
+
+on:
+  pull_request:
+
+jobs:
+  quality:
+
+    runs-on: ubuntu-latest
+
+    permissions:
+      pull-requests: write
+      contents: read
+
+    steps:
+
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Tools
+        run: |
+          pip install pycodestyle
+
+      - name: Run Style Check
+        run: |
+          pycodestyle . > style.txt || true
+
+      - name: Check File Length
+        run: |
+          python check_length.py
+
+      - name: Check Docstrings
+        run: |
+          python check_docstrings.py
+
+      - name: Generate Report
+        run: |
+          echo "## Code Quality Report" > report.md
+          echo "" >> report.md
+          echo "### PEP8 Violations" >> report.md
+          cat style.txt >> report.md || true
+
+      - name: Comment on PR
+        if: github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr comment \
+            ${{ github.event.pull_request.number }} \
+            --body-file report.md
