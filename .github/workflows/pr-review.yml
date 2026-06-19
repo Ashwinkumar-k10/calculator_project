@@ -1,0 +1,85 @@
+name: Automated PR Review
+
+on:
+pull_request:
+types: [opened, synchronize, reopened]
+
+permissions:
+pull-requests: write
+contents: read
+
+jobs:
+review:
+runs-on: ubuntu-latest
+
+````
+steps:
+  - uses: actions/checkout@v4
+    with:
+      fetch-depth: 0
+
+  - name: Generate Review Report
+    run: |
+      FILES=$(git diff --name-only origin/main...HEAD | wc -l)
+
+      ADDED=$(git diff --numstat origin/main...HEAD | awk '{a+=$1} END {print a}')
+
+      REMOVED=$(git diff --numstat origin/main...HEAD | awk '{a+=$2} END {print a}')
+
+      git diff --stat origin/main...HEAD > diffstat.txt
+
+      git diff --name-only origin/main...HEAD > changed.txt
+
+      grep -R -n "TODO\|FIXME" $(cat changed.txt) > todos.txt || true
+
+      echo "## Automated Review" > report.md
+      echo "" >> report.md
+      echo "- Files Changed: $FILES" >> report.md
+      echo "- Lines Added: $ADDED" >> report.md
+      echo "- Lines Removed: $REMOVED" >> report.md
+      echo "" >> report.md
+
+      echo "### TODO/FIXME" >> report.md
+      cat todos.txt >> report.md || true
+      echo "" >> report.md
+
+      echo "### Diff Statistics" >> report.md
+      echo '```' >> report.md
+      cat diffstat.txt >> report.md
+      echo '```' >> report.md
+
+  - name: Create or Update Comment
+    uses: actions/github-script@v7
+    with:
+      github-token: ${{ secrets.GITHUB_TOKEN }}
+      script: |
+        const fs = require('fs');
+        const body = fs.readFileSync('report.md', 'utf8');
+
+        const comments =
+          await github.rest.issues.listComments({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            issue_number: context.issue.number
+          });
+
+        const existing =
+          comments.data.find(c =>
+            c.body.includes("## Automated Review"));
+
+        if (existing) {
+          await github.rest.issues.updateComment({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            comment_id: existing.id,
+            body: body
+          });
+        } else {
+          await github.rest.issues.createComment({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            issue_number: context.issue.number,
+            body: body
+          });
+        }
+````
